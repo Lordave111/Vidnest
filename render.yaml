@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: vidnest
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # Free instances have 512 MB of RAM, so keep jobs small.
+      - key: MAX_FILESIZE_MB
+        value: "300"
+      - key: MAX_CONCURRENT_JOBS
+        value: "2"
+      - key: MAX_DURATION_SECONDS
+        value: "3600"
+      - key: DOWNLOAD_LIMIT_PER_HOUR
+        value: "15"
