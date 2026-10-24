@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidNest | Free YouTube &amp; Facebook Video Downloader</title>
+<meta name="description" content="Paste a YouTube or Facebook link and download the video as MP4 or MP3. Free, fast and no sign-up.">
+<meta name="theme-color" content="#050912">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23040d08'/><path d='M50 22v38m0 0-16-16m16 16 16-16M26 76h48' stroke='%2310b981' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050912;--surface:#0c1220;--surface-2:#101828;--line:rgba(255,255,255,.08);--accent:#10b981;--accent-2:#34d399;--glow:rgba(16,185,129,.25);--text:#f1f5f9;--dim:#94a3b8;--err:#f87171}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{background:var(--bg);color:var(--text);font:16px/1.65 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+ background-image:radial-gradient(900px 480px at 80% -8%,rgba(16,185,129,.16),transparent),radial-gradient(700px 420px at -10% 30%,rgba(59,130,246,.07),transparent)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:64px 64px;opacity:.35;-webkit-mask-image:radial-gradient(ellipse at 50% 0,#000 20%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 0,#000 20%,transparent 70%)}
+h1,h2,h3,.logo{font-family:'Space Grotesk',sans-serif}
+a{color:var(--accent-2)}
+.ic{width:1.1em;height:1.1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-.18em}
+.container{max-width:1040px;margin:0 auto;padding:0 24px}
+[hidden]{display:none!important}
+
+header{position:sticky;top:0;z-index:20;background:rgba(5,9,18,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+nav{height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.25rem;letter-spacing:-.4px;text-decoration:none;color:var(--text)}
+.logo i{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:var(--accent-2);font-style:normal}
+.links{display:flex;gap:28px}
+.links a{color:var(--dim);text-decoration:none;font-size:.92rem;font-weight:500;transition:color .2s}.links a:hover{color:var(--text)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 24px;border-radius:12px;font:600 .95rem Inter,sans-serif;border:1px solid transparent;cursor:pointer;transition:transform .2s,box-shadow .2s,background .2s,border-color .2s,opacity .2s;text-decoration:none}
+.btn.primary{background:var(--accent);color:#04120c;box-shadow:0 8px 28px var(--glow)}.btn.primary:hover:not(:disabled){transform:translateY(-2px);background:var(--accent-2)}
+.btn.ghost{border-color:var(--line);color:var(--text);background:rgba(255,255,255,.04)}.btn.ghost:hover{border-color:var(--accent)}
+.btn.sm{padding:10px 16px;font-size:.88rem}
+.btn.block{width:100%}
+.btn:disabled{opacity:.65;cursor:not-allowed}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(4,18,12,.3);border-top-color:#04120c;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.hero{text-align:center;padding:84px 0 36px}
+.badge{display:inline-flex;align-items:center;gap:10px;padding:7px 16px;border-radius:50px;border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.08);color:var(--accent-2);font-size:.76rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:24px}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.hero h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.06;letter-spacing:-.03em;margin-bottom:18px}
+.hero h1 em{font-style:normal;background:linear-gradient(120deg,var(--accent),#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.sub{color:var(--dim);font-size:1.08rem;max-width:560px;margin:0 auto 34px}
+
+.fetch{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto;padding:8px 8px 8px 20px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.4);transition:border-color .2s,box-shadow .2s}
+.fetch:focus-within{border-color:rgba(16,185,129,.6);box-shadow:0 20px 50px rgba(0,0,0,.4),0 0 0 4px rgba(16,185,129,.1)}
+.fetch .lead{color:var(--dim);font-size:1.25rem}
+.fetch input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font:500 1rem Inter,sans-serif;padding:12px 4px}
+.fetch input::placeholder{color:#64748b}
+.platforms{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:22px}
+.platforms span{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:50px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:#cbd5e1;font-size:.82rem;font-weight:500}
+.platforms .ic{color:var(--accent);font-size:1rem}
+.error{max-width:760px;margin:18px auto 0;padding:12px 18px;border-radius:12px;border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.08);color:#fecaca;font-size:.92rem;text-align:left;display:flex;gap:10px;align-items:flex-start}
+.error .ic{color:var(--err);margin-top:3px}
+
+.result{max-width:760px;margin:28px auto 0;display:grid;grid-template-columns:260px 1fr;gap:26px;padding:24px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),var(--surface);text-align:left;animation:rise .45s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.thumb{position:relative;align-self:start;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:var(--surface-2) linear-gradient(135deg,rgba(16,185,129,.18),rgba(59,130,246,.12));border:1px solid var(--line)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dur{position:absolute;right:8px;bottom:8px;padding:2px 8px;border-radius:6px;background:rgba(0,0,0,.78);font-size:.75rem;font-weight:600}
+.src{display:inline-block;color:var(--accent-2);font-size:.74rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.info h2{font-size:1.2rem;line-height:1.35;letter-spacing:-.01em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.by{color:var(--dim);font-size:.9rem;margin-top:4px}
+.label{margin:20px 0 10px;color:var(--dim);font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.quals{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-bottom:20px}
+.q{position:relative;cursor:pointer}
+.q input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.q-box{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);transition:border-color .2s,background .2s}
+.q-box b{font:700 1rem 'Space Grotesk',sans-serif}
+.q-box small{color:var(--dim);font-size:.74rem}
+.q:hover .q-box{border-color:rgba(16,185,129,.45)}
+.q input:checked+.q-box{border-color:var(--accent);background:rgba(16,185,129,.1);box-shadow:0 0 0 1px rgba(16,185,129,.35)}
+.q input:focus-visible+.q-box{outline:2px solid var(--accent-2);outline-offset:2px}
+.prog{margin-top:16px}
+.bar{height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--accent),#67e8f9);transition:width .5s ease}
+.prog p{margin-top:8px;color:var(--dim);font-size:.88rem}
+
+section.block{padding:76px 0 8px}
+.eyebrow{color:var(--accent-2);font-size:.76rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+.block h2.title{font-size:clamp(1.7rem,3.6vw,2.3rem);letter-spacing:-.02em;line-height:1.15;margin-bottom:34px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
+.step{padding:28px;border-radius:20px;border:1px solid var(--line);background:var(--surface);transition:border-color .25s,transform .25s}
+.step:hover{border-color:rgba(16,185,129,.5);transform:translateY(-4px)}
+.step .n{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;margin-bottom:18px;font:700 1rem 'Space Grotesk';color:var(--accent-2);background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25)}
+.step h3{font-size:1.15rem;margin-bottom:6px}
+.step p{color:var(--dim);font-size:.95rem}
+.faq{max-width:760px}
+.faq details{border:1px solid var(--line);border-radius:14px;background:var(--surface);margin-bottom:10px;transition:border-color .2s}
+.faq details[open]{border-color:rgba(16,185,129,.4)}
+.faq summary{cursor:pointer;list-style:none;padding:16px 20px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--accent-2);font-size:1.3rem;line-height:1;transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{padding:0 20px 18px;color:var(--dim);font-size:.95rem}
+.terms{max-width:760px;padding:28px;border-radius:20px;border:1px solid var(--line);background:var(--surface)}
+.terms p{color:var(--dim);font-size:.92rem;margin-bottom:12px}.terms p:last-child{margin-bottom:0}
+.terms strong{color:var(--text)}
+footer{margin-top:80px;border-top:1px solid var(--line);padding:30px 0;text-align:center;color:var(--dim);font-size:.85rem}
+footer p+p{margin-top:4px;font-size:.8rem}
+
+@media(max-width:760px){
+ .hero{padding:56px 0 28px}.links a:not(:last-child){display:none}
+ .fetch{flex-wrap:wrap;padding:14px;gap:10px}.fetch .lead{display:none}.fetch input{flex:1 1 100%;padding:8px 4px}
+ .fetch .btn{flex:1}
+ .result{grid-template-columns:1fr;padding:18px}
+ section.block{padding-top:56px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="4"/><polygon points="10 9 15 12 10 15 10 9"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+</svg>
+
+<header>
+  <div class="container">
+    <nav>
+      <a href="#" class="logo"><i><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></i>VidNest</a>
+      <div class="links"><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="#terms">Terms</a></div>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <span class="badge"><i></i>Free · No sign-up · MP4 &amp; MP3</span>
+    <h1>Download <em>YouTube &amp; Facebook</em> videos in seconds</h1>
+    <p class="sub">Paste a video link, pick your quality, and save it to your device. Simple, fast and private.</p>
+
+    <form id="form" class="fetch" autocomplete="off" novalidate>
+      <svg class="ic lead" aria-hidden="true"><use href="#i-link"/></svg>
+      <input id="url" type="url" inputmode="url" placeholder="Paste a YouTube or Facebook link here…" aria-label="Video link">
+      <button type="button" id="paste" class="btn ghost sm"><svg class="ic" aria-hidden="true"><use href="#i-clip"/></svg>Paste</button>
+      <button type="submit" id="go" class="btn primary"><span id="golabel">Fetch video</span><span id="gospin" class="spin" hidden></span></button>
+    </form>
+
+    <div class="platforms" aria-label="Supported sites">
+      <span><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>YouTube · Shorts</span>
+      <span><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Facebook · Reels</span>
+    </div>
+
+    <div id="error" class="error" role="alert" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span id="errtext"></span></div>
+
+    <section id="result" class="result" hidden aria-live="polite">
+      <div class="thumb"><img id="thumb" alt="" referrerpolicy="no-referrer"><span id="dur" class="dur" hidden></span></div>
+      <div class="info">
+        <span class="src" id="src"></span>
+        <h2 id="title"></h2>
+        <p class="by" id="by"></p>
+        <div class="label">Choose a format</div>
+        <div id="quals" class="quals" role="radiogroup" aria-label="Format"></div>
+        <button id="dl" type="button" class="btn primary block"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg><span id="dllabel">Download</span></button>
+        <div id="prog" class="prog" hidden>
+          <div class="bar"><i id="fill"></i></div>
+          <p id="progtxt"></p>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section id="how" class="block">
+    <div class="eyebrow">How it works</div>
+    <h2 class="title">Three steps. No software.</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Copy the link</h3><p>Open the video on YouTube or Facebook and copy its link from the address bar or the Share menu.</p></div>
+      <div class="step"><div class="n">2</div><h3>Paste and fetch</h3><p>Paste it above and press Fetch. You will see the video details and the qualities available.</p></div>
+      <div class="step"><div class="n">3</div><h3>Pick and download</h3><p>Choose MP4 video or MP3 audio, press Download, and your file saves to your device.</p></div>
+    </div>
+  </section>
+
+  <section id="faq" class="block">
+    <div class="eyebrow">FAQ</div>
+    <h2 class="title">Good to know</h2>
+    <div class="faq">
+      <details><summary>Is VidNest free?</summary><p>Yes. There is nothing to install and no account to create.</p></details>
+      <details><summary>Which links work?</summary><p>Public links to single videos from YouTube (watch links, Shorts, youtu.be) and Facebook (videos, Reels, fb.watch). Playlists, live streams and private videos are not supported.</p></details>
+      <details><summary>Why did my link fail?</summary><p>The video may be private, age-restricted, removed, blocked in your region, longer than 60 minutes, or larger than 500 MB. Facebook videos shared only with friends can't be downloaded.</p></details>
+      <details><summary>What formats and qualities do you offer?</summary><p>MP4 video up to 1080p when the video has it, or MP3 audio only.</p></details>
+      <details><summary>Do you keep my downloads?</summary><p>No. Files are prepared on request and deleted automatically within about 10 minutes.</p></details>
+    </div>
+  </section>
+
+  <section id="terms" class="block">
+    <div class="eyebrow">Terms &amp; copyright</div>
+    <h2 class="title">Use it responsibly</h2>
+    <div class="terms">
+      <p><strong>Only download content you own, have permission to save, or that is licensed for reuse</strong> (for example Creative Commons or public domain). You are responsible for how you use downloaded files and for following copyright law and the terms of the platform the video comes from.</p>
+      <p>VidNest is not affiliated with, endorsed by, or connected to YouTube, Google, Facebook or Meta. We do not host a video library: files are prepared temporarily and removed automatically.</p>
+      <p><strong>Privacy:</strong> there are no accounts. The link you paste is used only to prepare your download, and basic request logs (such as IP address) may be kept briefly to prevent abuse.</p>
+      <p><strong>Copyright owners and abuse reports:</strong> email <a href="mailto:nwahiridaviduche@gmail.com">nwahiridaviduche@gmail.com</a> and we will respond promptly.</p>
+    </div>
+  </section>
+</main>
+
+<footer><div class="container"><p>&copy; 2026 VidNest. All rights reserved.</p><p>Not affiliated with YouTube, Google, Facebook or Meta.</p></div></footer>
+
+<script>
+(() => {
+  // The site and the API run as one service, so requests go to the same address.
+  const API_BASE = "";
+
+  const $ = id => document.getElementById(id);
+  const form = $('form'), input = $('url'), go = $('go'), golabel = $('golabel'), gospin = $('gospin'),
+        paste = $('paste'), errBox = $('error'), errText = $('errtext'), result = $('result'),
+        thumb = $('thumb'), dur = $('dur'), src = $('src'), title = $('title'), by = $('by'),
+        quals = $('quals'), dl = $('dl'), dllabel = $('dllabel'), prog = $('prog'),
+        fill = $('fill'), progtxt = $('progtxt');
+  let currentUrl = '', fetching = false, downloading = false;
+
+  const showError = msg => { errText.textContent = msg; errBox.hidden = false; };
+  const clearError = () => { errBox.hidden = true; errText.textContent = ''; };
+
+  const fmtDuration = s => {
+    if (!s) return '';
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const p = n => String(n).padStart(2, '0');
+    return h ? `${h}:${p(m)}:${p(sec)}` : `${m}:${p(sec)}`;
+  };
+  const fmtSize = b => {
+    if (!b) return '';
+    const mb = b / 1048576;
+    return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.max(1, Math.round(mb)) + ' MB';
+  };
+
+  async function api(path, opts) {
+    let res;
+    try { res = await fetch(API_BASE + path, opts); }
+    catch (e) { throw new Error('Cannot reach the server. Check your connection and try again.'); }
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* no body */ }
+    if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+    return data;
+  }
+  const post = (path, body) => api(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+
+  function setFetching(on) {
+    fetching = on; go.disabled = on; paste.disabled = on;
+    gospin.hidden = !on; golabel.textContent = on ? 'Fetching…' : 'Fetch video';
+  }
+
+  function setProgress(pct, text, linkHref) {
+    prog.hidden = false;
+    fill.style.width = pct + '%';
+    progtxt.textContent = text;
+    if (linkHref) {
+      progtxt.append(' ');
+      const a = document.createElement('a');
+      a.href = linkHref; a.textContent = 'Download again';
+      progtxt.append(a);
+    }
+  }
+
+  function render(data) {
+    src.textContent = data.platform;
+    title.textContent = data.title;
+    by.textContent = data.uploader || '';
+    dur.hidden = !data.duration; dur.textContent = fmtDuration(data.duration);
+    thumb.hidden = !data.thumbnail;
+    thumb.onerror = () => { thumb.hidden = true; };
+    if (data.thumbnail) thumb.src = data.thumbnail;
+
+    quals.replaceChildren();
+    data.formats.forEach((f, i) => {
+      const label = document.createElement('label'); label.className = 'q';
+      const radio = document.createElement('input');
+      radio.type = 'radio'; radio.name = 'q'; radio.value = f.id; radio.checked = i === 0;
+      const box = document.createElement('span'); box.className = 'q-box';
+      const b = document.createElement('b'); b.textContent = f.label;
+      const s = document.createElement('small');
+      s.textContent = f.hint + (f.size ? ' · ' + fmtSize(f.size) : '');
+      box.append(b, s); label.append(radio, box); quals.append(label);
+    });
+    prog.hidden = true; fill.style.width = '0%';
+    result.hidden = false;
+    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (fetching) return;
+    const url = input.value.trim();
+    clearError(); result.hidden = true;
+    if (!url) { showError('Paste a video link first.'); input.focus(); return; }
+    setFetching(true);
+    try {
+      const data = await post('/api/info', { url });
+      currentUrl = url;
+      render(data);
+    } catch (err) { showError(err.message); }
+    finally { setFetching(false); }
+  });
+
+  paste.addEventListener('click', async () => {
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (text) { input.value = text; go.click(); }
+    } catch (e) {
+      input.focus();
+      showError('Your browser blocked the paste button. Press and hold the box, then choose Paste.');
+    }
+  });
+
+  async function waitForJob(id) {
+    const started = Date.now();
+    while (Date.now() - started < 15 * 60 * 1000) {
+      await new Promise(r => setTimeout(r, 900));
+      const s = await api('/api/status/' + id);
+      if (s.status === 'error') throw new Error(s.error || 'The download failed. Please try again.');
+      if (s.status === 'done') return;
+      const p = Math.max(4, Math.round(s.progress || 0));
+      setProgress(p, p >= 90 ? 'Finalising your file…' : 'Preparing your file… ' + p + '%');
+    }
+    throw new Error('This is taking too long. Please try again.');
+  }
+
+  dl.addEventListener('click', async () => {
+    if (downloading) return;
+    const sel = document.querySelector('input[name="q"]:checked');
+    if (!sel) return;
+    clearError();
+    downloading = true; dl.disabled = true; dllabel.textContent = 'Working…';
+    setProgress(3, 'Starting…');
+    try {
+      const { job_id } = await post('/api/prepare', { url: currentUrl, format: sel.value });
+      await waitForJob(job_id);
+      const fileUrl = API_BASE + '/api/file/' + job_id;
+      const a = document.createElement('a');
+      a.href = fileUrl; a.rel = 'noopener';
+      document.body.append(a); a.click(); a.remove();
+      setProgress(100, 'Done! Your download has started.', fileUrl);
+    } catch (err) {
+      prog.hidden = true; showError(err.message);
+    } finally {
+      downloading = false; dl.disabled = false; dllabel.textContent = 'Download';
+    }
+  });
+})();
+</script>
+</body>
+</html>
