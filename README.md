@@ -63,3 +63,17 @@ Change them in Render under **Environment**.
 pip install -r requirements.txt   # and install ffmpeg on your machine
 python app.py                     # http://localhost:8000
 ```
+
+
+## Personal accounts and saved library
+
+VidNest now supports email/password accounts, saved favourites, custom playlists and a recent listening history. Passwords are stored as Werkzeug password hashes; account sessions use secure, HTTP-only cookies.
+
+Set these environment variables on the hosting service:
+
+| Variable | Purpose |
+|---|---|
+| `VIDNEST_SECRET_KEY` | A long, random secret used to sign account sessions. Keep it private and stable across deploys. |
+| `VIDNEST_DB_PATH` | SQLite database file path. |
+
+For persistent accounts on Render, attach a persistent disk mounted at `/var/data` and set `VIDNEST_DB_PATH=/var/data/vidnest.sqlite3`. Without a persistent disk, SQLite data on Render's normal filesystem can be lost when the instance is replaced or redeployed. Do not use the default database path for production accounts unless the filesystem is persistent.
