@@ -14,3 +14,5 @@ services:
         value: "3600"
       - key: DOWNLOAD_LIMIT_PER_HOUR
         value: "15"
+      - key: VIDNEST_SECRET_KEY
+        generateValue: true
