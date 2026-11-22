@@ -43,7 +43,7 @@ ALLOWED_ORIGINS = {
     for o in os.getenv("ALLOWED_ORIGINS", "").split(",")
     if o.strip()
 }
-ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "facebook.com", "fb.watch")
+ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "facebook.com", "fb.watch", "soundcloud.com", "on.soundcloud.com")
 FORMAT_RE = re.compile(r"^(mp3|mp4-best|mp4-\d{3,4})$")
 WORK_ROOT = os.path.join(tempfile.gettempdir(), "vidnest")
 
@@ -171,10 +171,10 @@ def video_payload(info):
         options.append({"id": f"mp4-{h}", "label": f"{h}p", "hint": "MP4 video", "size": size})
     if not options:
         options.append({"id": "mp4-best", "label": "Best quality", "hint": "MP4 video", "size": None})
-    options.append({"id": "mp3", "label": "MP3", "hint": "Audio only", "size": None})
+    if "soundcloud" in (info.get("extractor_key") or "").lower():\n        options = []\n    options.append({"id": "mp3", "label": "MP3", "hint": "Audio only", "size": None})
 
     extractor = (info.get("extractor_key") or "").lower()
-    platform = "YouTube" if "youtube" in extractor else "Facebook" if "facebook" in extractor else "Video"
+    platform = "YouTube" if "youtube" in extractor else "Facebook" if "facebook" in extractor else "SoundCloud" if "soundcloud" in extractor else "Media"
 
     return {
         "title": info.get("title") or "Untitled video",
@@ -324,7 +324,7 @@ def api_info():
     data = request.get_json(silent=True) or {}
     url = clean_url(data.get("url"))
     if not url:
-        return jsonify(error="Please paste a valid YouTube or Facebook video link."), 400
+        return jsonify(error="Please paste a valid supported song or video link (YouTube, Facebook or SoundCloud)."), 400
     try:
         with yt_dlp.YoutubeDL({**base_opts(), "skip_download": True}) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -344,7 +344,7 @@ def api_prepare():
     url = clean_url(data.get("url"))
     fmt = str(data.get("format", ""))
     if not url or not FORMAT_RE.match(fmt):
-        return jsonify(error="Invalid request. Please fetch the video again."), 400
+        return jsonify(error="Invalid request. Please check the song or video link again."), 400
     if not SLOTS.acquire(blocking=False):
         return jsonify(error="We're busy right now. Please try again in a minute."), 503
 
