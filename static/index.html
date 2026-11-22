@@ -109,10 +109,10 @@ async function hydrate(item,mediaKind){
   return {id:item.identifier,title:item.title||meta.metadata?.title||item.identifier,creator:item.creator||meta.metadata?.creator||'Independent creator',year:item.year||'',license:item.licenseurl,url:fileUrl(item.identifier,chosen.name),image:image? 'https://archive.org/download/'+encodeURIComponent(item.identifier)+'/'+image:'',details:'https://archive.org/details/'+encodeURIComponent(item.identifier)};
  }catch{return null}
 }
-function card(item,mediaKind,index){
+function card(item,mediaKind,index,collection){
  const el=document.createElement('article');el.className='media-card';
  const art=document.createElement('div');art.className='art';if(item.image){const img=document.createElement('img');img.loading='lazy';img.src=item.image;img.alt='';img.onerror=()=>img.remove();art.append(img)}else art.textContent=mediaKind==='audio'?'♫':'▷';
- if(mediaKind==='audio'){const play=document.createElement('button');play.className='play';play.textContent='▶';play.setAttribute('aria-label','Play '+item.title);play.onclick=()=>{queue=activeItems;queueIndex=index;playTrack(item)};art.append(play)}
+ if(mediaKind==='audio'){const play=document.createElement('button');play.className='play';play.textContent='▶';play.setAttribute('aria-label','Play '+item.title);play.onclick=()=>{queue=collection;queueIndex=index;playTrack(item)};art.append(play)}
  const h=document.createElement('h3');h.textContent=item.title;const p=document.createElement('p');p.textContent=item.creator+(item.year?' · '+item.year:'');
  const actions=document.createElement('div');actions.className='card-actions';const dl=document.createElement('a');dl.href=item.url;dl.target='_blank';dl.rel='noopener';dl.download='';dl.textContent='Download';const detail=document.createElement('a');detail.href=item.details;detail.target='_blank';detail.rel='noopener';detail.textContent='Licence / info';actions.append(dl,detail);el.append(art,h,p,actions);return el
 }
@@ -122,7 +122,7 @@ async function searchLibrary(term,mediaKind=kind,target='#libraryResults',limit=
  try{
   const docs=await archiveSearch(term,mediaKind,limit);const hydrated=await Promise.all(docs.slice(0,16).map(d=>hydrate(d,mediaKind)));activeItems=hydrated.filter(Boolean);
   results.replaceChildren();if(!activeItems.length){results.innerHTML='<div class="empty">No downloadable files found for this search. Try another phrase.</div>';if(status)status.textContent='No matching downloadable files.';return}
-  activeItems.forEach((item,i)=>results.append(card(item,mediaKind,i)));if(status)status.textContent=activeItems.length+' downloadable '+(mediaKind==='audio'?'audio':'video')+' items found. Select play or download.';
+  activeItems.forEach((item,i)=>results.append(card(item,mediaKind,i,activeItems)));if(status)status.textContent=activeItems.length+' downloadable '+(mediaKind==='audio'?'audio':'video')+' items found. Select play or download.';
  }catch(e){results.innerHTML='<div class="empty">Could not reach the catalogue. Please try again.</div>';if(status)status.textContent=e.message}
 }
 $('#libraryForm').addEventListener('submit',e=>{e.preventDefault();const q=$('#libraryQuery').value.trim();if(q)searchLibrary(q)});
