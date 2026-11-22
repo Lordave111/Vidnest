@@ -383,5 +383,315 @@ def api_file(job_id):
     return send_file(job["file"], as_attachment=True, download_name=job["name"])
 
 
+
+# ------------------------------------------------------ personal accounts ---
+import json
+import secrets
+import sqlite3
+from flask import session
+from werkzeug.security import check_password_hash, generate_password_hash
+
+app.secret_key = os.getenv("VIDNEST_SECRET_KEY") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
+    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30,
+    MAX_CONTENT_LENGTH=2 * 1024 * 1024,
+)
+
+DB_PATH = os.getenv("VIDNEST_DB_PATH", os.path.join(os.path.dirname(__file__), "vidnest.sqlite3"))
+os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+
+
+def db():
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+
+def init_user_db():
+    with db() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                display_name TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS favourites (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                item_id TEXT NOT NULL,
+                item_json TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(user_id, item_id)
+            );
+            CREATE TABLE IF NOT EXISTS playlists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS playlist_items (
+                playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+                item_id TEXT NOT NULL,
+                item_json TEXT NOT NULL,
+                added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(playlist_id, item_id)
+            );
+            CREATE TABLE IF NOT EXISTS listening_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                item_id TEXT NOT NULL,
+                item_json TEXT NOT NULL,
+                played_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS history_user_idx ON listening_history(user_id, id DESC);
+        """)
+
+
+init_user_db()
+
+
+def current_user_id():
+    return session.get("user_id")
+
+
+def require_user():
+    if not current_user_id():
+        return jsonify(error="Sign in to use your personal library."), 401
+    return None
+
+
+def clean_library_item(payload):
+    if not isinstance(payload, dict):
+        return None
+    item_id = str(payload.get("id") or "").strip()[:180]
+    title = str(payload.get("title") or "").strip()[:300]
+    url = str(payload.get("url") or "").strip()
+    if not item_id or not title or not url or not url.startswith(("https://", "http://")):
+        return None
+    return {
+        "id": item_id,
+        "title": title,
+        "creator": str(payload.get("creator") or "Unknown creator")[:200],
+        "year": str(payload.get("year") or "")[:20],
+        "url": url[:1500],
+        "image": str(payload.get("image") or "")[:1500],
+        "details": str(payload.get("details") or "")[:1500],
+        "license": str(payload.get("license") or "")[:1000],
+        "kind": "video" if payload.get("kind") == "video" else "audio",
+    }
+
+
+@app.get("/api/account/me")
+def account_me():
+    uid = current_user_id()
+    if not uid:
+        return jsonify(user=None)
+    with db() as conn:
+        user = conn.execute(
+            "SELECT id,email,display_name,created_at FROM users WHERE id=?", (uid,)
+        ).fetchone()
+    if not user:
+        session.clear()
+        return jsonify(user=None)
+    return jsonify(user=dict(user))
+
+
+@app.post("/api/account/register")
+@rate_limit("account", 12)
+def account_register():
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email") or "").strip().lower()[:254]
+    name = str(data.get("name") or "").strip()[:60]
+    password = str(data.get("password") or "")
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return jsonify(error="Enter a valid email address."), 400
+    if len(name) < 2:
+        return jsonify(error="Your name must contain at least 2 characters."), 400
+    if len(password) < 10 or len(password) > 128:
+        return jsonify(error="Use a password between 10 and 128 characters."), 400
+    try:
+        with db() as conn:
+            cur = conn.execute(
+                "INSERT INTO users(email,display_name,password_hash) VALUES(?,?,?)",
+                (email, name, generate_password_hash(password)),
+            )
+            uid = cur.lastrowid
+    except sqlite3.IntegrityError:
+        return jsonify(error="An account with that email already exists. Sign in instead."), 409
+    session.clear()
+    session["user_id"] = uid
+    session.permanent = True
+    return jsonify(user={"id": uid, "email": email, "display_name": name}), 201
+
+
+@app.post("/api/account/login")
+@rate_limit("account", 12)
+def account_login():
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email") or "").strip().lower()[:254]
+    password = str(data.get("password") or "")
+    with db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    if not user or not check_password_hash(user["password_hash"], password):
+        return jsonify(error="Email or password is incorrect."), 401
+    session.clear()
+    session["user_id"] = user["id"]
+    session.permanent = True
+    return jsonify(user={"id": user["id"], "email": user["email"], "display_name": user["display_name"]})
+
+
+@app.post("/api/account/logout")
+def account_logout():
+    session.clear()
+    return jsonify(ok=True)
+
+
+@app.get("/api/library")
+def library_snapshot():
+    denied = require_user()
+    if denied:
+        return denied
+    uid = current_user_id()
+    with db() as conn:
+        favourites = conn.execute(
+            "SELECT item_json FROM favourites WHERE user_id=? ORDER BY created_at DESC", (uid,)
+        ).fetchall()
+        playlists = conn.execute(
+            "SELECT id,name,created_at FROM playlists WHERE user_id=? ORDER BY id DESC", (uid,)
+        ).fetchall()
+        history = conn.execute(
+            "SELECT item_json,played_at FROM listening_history WHERE user_id=? ORDER BY id DESC LIMIT 40",
+            (uid,),
+        ).fetchall()
+        playlist_data = []
+        for playlist in playlists:
+            rows = conn.execute(
+                "SELECT item_json FROM playlist_items WHERE playlist_id=? ORDER BY added_at DESC",
+                (playlist["id"],),
+            ).fetchall()
+            playlist_data.append({
+                "id": playlist["id"], "name": playlist["name"],
+                "items": [json.loads(row["item_json"]) for row in rows],
+            })
+    return jsonify(
+        favourites=[json.loads(row["item_json"]) for row in favourites],
+        playlists=playlist_data,
+        history=[{"item": json.loads(row["item_json"]), "played_at": row["played_at"]} for row in history],
+    )
+
+
+@app.post("/api/library/favourites")
+def add_favourite():
+    denied = require_user()
+    if denied:
+        return denied
+    item = clean_library_item((request.get_json(silent=True) or {}).get("item"))
+    if not item:
+        return jsonify(error="That media item is missing required details."), 400
+    with db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO favourites(user_id,item_id,item_json) VALUES(?,?,?)",
+            (current_user_id(), item["id"], json.dumps(item)),
+        )
+    return jsonify(ok=True)
+
+
+@app.delete("/api/library/favourites/<path:item_id>")
+def remove_favourite(item_id):
+    denied = require_user()
+    if denied:
+        return denied
+    with db() as conn:
+        conn.execute("DELETE FROM favourites WHERE user_id=? AND item_id=?", (current_user_id(), item_id[:180]))
+    return jsonify(ok=True)
+
+
+@app.post("/api/library/history")
+def add_history():
+    denied = require_user()
+    if denied:
+        return denied
+    item = clean_library_item((request.get_json(silent=True) or {}).get("item"))
+    if not item:
+        return jsonify(error="That media item is missing required details."), 400
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO listening_history(user_id,item_id,item_json) VALUES(?,?,?)",
+            (current_user_id(), item["id"], json.dumps(item)),
+        )
+        conn.execute(
+            "DELETE FROM listening_history WHERE user_id=? AND id NOT IN "
+            "(SELECT id FROM listening_history WHERE user_id=? ORDER BY id DESC LIMIT 100)",
+            (current_user_id(), current_user_id()),
+        )
+    return jsonify(ok=True)
+
+
+@app.post("/api/library/playlists")
+def create_playlist():
+    denied = require_user()
+    if denied:
+        return denied
+    name = str((request.get_json(silent=True) or {}).get("name") or "").strip()[:60]
+    if len(name) < 1:
+        return jsonify(error="Give your playlist a name."), 400
+    with db() as conn:
+        cur = conn.execute("INSERT INTO playlists(user_id,name) VALUES(?,?)", (current_user_id(), name))
+    return jsonify(id=cur.lastrowid, name=name), 201
+
+
+@app.post("/api/library/playlists/<int:playlist_id>/items")
+def add_playlist_item(playlist_id):
+    denied = require_user()
+    if denied:
+        return denied
+    item = clean_library_item((request.get_json(silent=True) or {}).get("item"))
+    if not item:
+        return jsonify(error="That media item is missing required details."), 400
+    with db() as conn:
+        owned = conn.execute(
+            "SELECT id FROM playlists WHERE id=? AND user_id=?", (playlist_id, current_user_id())
+        ).fetchone()
+        if not owned:
+            return jsonify(error="Playlist not found."), 404
+        conn.execute(
+            "INSERT OR REPLACE INTO playlist_items(playlist_id,item_id,item_json) VALUES(?,?,?)",
+            (playlist_id, item["id"], json.dumps(item)),
+        )
+    return jsonify(ok=True)
+
+
+@app.delete("/api/library/playlists/<int:playlist_id>")
+def delete_playlist(playlist_id):
+    denied = require_user()
+    if denied:
+        return denied
+    with db() as conn:
+        conn.execute("DELETE FROM playlists WHERE id=? AND user_id=?", (playlist_id, current_user_id()))
+    return jsonify(ok=True)
+
+
+@app.delete("/api/library/playlists/<int:playlist_id>/items/<path:item_id>")
+def remove_playlist_item(playlist_id, item_id):
+    denied = require_user()
+    if denied:
+        return denied
+    with db() as conn:
+        owned = conn.execute(
+            "SELECT id FROM playlists WHERE id=? AND user_id=?", (playlist_id, current_user_id())
+        ).fetchone()
+        if not owned:
+            return jsonify(error="Playlist not found."), 404
+        conn.execute(
+            "DELETE FROM playlist_items WHERE playlist_id=? AND item_id=?", (playlist_id, item_id[:180])
+        )
+    return jsonify(ok=True)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8000")), debug=False)
