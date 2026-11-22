@@ -43,7 +43,7 @@ ALLOWED_ORIGINS = {
     for o in os.getenv("ALLOWED_ORIGINS", "").split(",")
     if o.strip()
 }
-ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "facebook.com", "fb.watch")
+ALLOWED_DOMAINS = ("youtube.com", "youtu.be", "facebook.com", "fb.watch", "soundcloud.com", "on.soundcloud.com")
 FORMAT_RE = re.compile(r"^(mp3|mp4-best|mp4-\d{3,4})$")
 WORK_ROOT = os.path.join(tempfile.gettempdir(), "vidnest")
 
@@ -174,7 +174,7 @@ def video_payload(info):
     options.append({"id": "mp3", "label": "MP3", "hint": "Audio only", "size": None})
 
     extractor = (info.get("extractor_key") or "").lower()
-    platform = "YouTube" if "youtube" in extractor else "Facebook" if "facebook" in extractor else "Video"
+    platform = "YouTube" if "youtube" in extractor else "Facebook" if "facebook" in extractor else "SoundCloud" if "soundcloud" in extractor else "Media"
 
     return {
         "title": info.get("title") or "Untitled video",
